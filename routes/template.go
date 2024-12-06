@@ -2,6 +2,7 @@ package routes
 
 import (
 	"cybercampus_module/controllers"
+	
 
 	"github.com/gofiber/fiber/v2"
 )

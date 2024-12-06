@@ -7,10 +7,11 @@ import (
 )
 
 func ModuleRoute(app *fiber.App) {
+	
 
 	app.Get("/modules", controllers.GetAllModules)
 	app.Get("/modules/:id", controllers.GetModuleByID)
-	app.Post("/modules", controllers.CreateModule)
+	app.Post("/modules/add", controllers.CreateModule)
 	app.Put("/modules/:id/update", controllers.UpdateModule)
 	app.Delete("/modules/:id/delete", controllers.DeleteModule)
 

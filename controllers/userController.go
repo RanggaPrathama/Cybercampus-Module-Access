@@ -95,8 +95,10 @@ func CreateUser(c *fiber.Ctx) error {
 	}
 
 	usernewId := data.InsertedID.(primitive.ObjectID)
+	
 	//Sync UserModule
-	responses , err := helpers.SyncModuleTemplate(user.JENIS_USER, usernewId)
+	if user.Role != "admin"{
+		responses , err := helpers.SyncModuleTemplate(user.JENIS_USER, usernewId)
 
 	if err != nil || !responses {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
@@ -105,8 +107,9 @@ func CreateUser(c *fiber.Ctx) error {
 			Data: err.Error(),
 		})
 	}
+	}
 	
-
+	
 	return c.Status(fiber.StatusCreated).JSON( response.Response{
 		Status: fiber.StatusCreated,
 		Message: "Success",
@@ -118,7 +121,7 @@ func GetUserById(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	id := c.Params("id")
+	id := c.Locals("id_user").(string)
 	hexId, err  := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
@@ -277,4 +280,56 @@ func DeleteUser (c *fiber.Ctx) error {
 		Message: "Success",
 		Data: respon,
 	})
+}
+
+
+func UpdateJenisUser( c *fiber.Ctx) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var user models.UserRequest
+
+	if err := c.BodyParser(&user); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(response.Response{
+			Status: fiber.StatusBadRequest,
+			Message: "Error when parsing body",
+			Data: err.Error(),
+		})
+	}
+
+	updateUser := bson.M{
+		"$set" : bson.M{
+			"jenis_user" : user.JENIS_USER,
+		},
+	}
+
+	filter := bson.M{"_id" : user.ID}
+
+	result , err := collection.UpdateOne(ctx, filter, updateUser)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
+			Status: fiber.StatusInternalServerError,
+			Message: "Error when updating user",
+			Data: err.Error(),
+		})
+	}
+
+	responses , err := helpers.SyncModuleTemplate(user.JENIS_USER, user.ID)
+
+	if err != nil || !responses {
+		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
+			Status: fiber.StatusInternalServerError,
+			Message: "Error when syncing user module",
+			Data: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(response.Response{
+		Status: fiber.StatusOK,
+		Message: "Success",
+		Data: result,
+	})
+
+
 }

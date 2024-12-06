@@ -33,10 +33,42 @@ func CreateTemplate(c *fiber.Ctx) error {
 		})
 	}
 
+	//check jenis user ada tida 
+	var checkJenisUser models.TemplateRequest
+	err := collectionTemplate.FindOne(ctx, bson.M{"jenis_user": template.JenisUser}).Decode(&checkJenisUser)
+
+	fmt.Print("Check Jenis User",checkJenisUser)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+		
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  fiber.StatusBadRequest,
+				"message": "Jenis User does not exist",
+				"data":    nil,
+			})
+		}
+	
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  fiber.StatusInternalServerError,
+			"message": "Error when checking Jenis User",
+			"data":    err.Error(),
+		})
+	}
+
+
 	if template.JenisUser == ""  {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  fiber.StatusBadRequest,
 			"message": "Jenis User is required",
+			"data":    nil,
+		})
+	}
+
+	if template.Template == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  fiber.StatusBadRequest,
+			"message": "Template is required",
 			"data":    nil,
 		})
 	}

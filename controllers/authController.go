@@ -45,24 +45,27 @@ func Login(c *fiber.Ctx) error {
 		})
 	}
 
-	token, err  := helpers.GenerateToken(LoginData.ID.Hex(), LoginData.Username, LoginData.Email, LoginData.JENIS_USER.Hex())
+	
+
+	var jenisUser models.JenisUserResponse
+
+
+	_ = collectionTemplate.FindOne(ctx, bson.M{"_id": LoginData.JENIS_USER}).Decode(&jenisUser)
+
+	// if err != nil {
+	// 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+	// 		"status":  fiber.StatusInternalServerError,
+	// 		"message": "Error when fetching jenis user",
+	// 		"data":    err.Error(),
+	// 	})
+	// }
+
+	token, err  := helpers.GenerateToken(LoginData.ID.Hex(), LoginData.Username, LoginData.Email, jenisUser.JenisUser, LoginData.Role)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  fiber.StatusInternalServerError,
 			"message": "Error when generating token",
-			"data":    err.Error(),
-		})
-	}
-
-	var jenisUser models.JenisUserResponse
-
-	err = collectionTemplate.FindOne(ctx, bson.M{"_id": LoginData.JENIS_USER}).Decode(&jenisUser)
-
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  fiber.StatusInternalServerError,
-			"message": "Error when fetching jenis user",
 			"data":    err.Error(),
 		})
 	}
@@ -76,7 +79,12 @@ func Login(c *fiber.Ctx) error {
 			NM_USER:  LoginData.NM_USER,
 			Email:     LoginData.Email,
 			Password: LoginData.Password,
-			JENIS_USER: jenisUser.JenisUser,
+			JENIS_USER: func() string {
+				if jenisUser.JenisUser == "" {
+					return "admin"
+				}
+				return jenisUser.JenisUser
+			}(),
 			IsActive: LoginData.IsActive,
 			Role: 	LoginData.Role,
 			Phone: 	LoginData.Phone,

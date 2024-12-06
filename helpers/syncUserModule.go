@@ -69,28 +69,30 @@ func SyncModuleTemplate(jenis_user primitive.ObjectID, idUser primitive.ObjectID
 			return true, nil
 		}
 
-		// Jika error lain, return error
+		
 		return false, err
 	}
 
-	// Jika entri sudah ada, update modules dengan mengambil dari template
-	var template models.TemplateResponse
+	
+	var template models.TemplateUserModuleRequest
 	err = collectionTemplate.FindOne(ctx, bson.M{"_id": jenis_user}).Decode(&template)
 
 	if err != nil {
 		return false, err
 	}
 
-	// Siapkan modul baru dari template
-	updatedModules := []primitive.ObjectID{}
-	for _, module := range template.Template {
-		updatedModules = append(updatedModules, module.ID)
-	}
 
-	// Update entri di user_module
+	updatedModules := []primitive.ObjectID{}
+	updatedModules = append(updatedModules, template.Template...)
+	// for _, module := range template.Template {
+	// 	updatedModules = append(updatedModules, module.ID)
+	// }
+
+	
 	update := bson.M{
 		"$set": bson.M{
 			"modules":    updatedModules,
+			"jenis_user": template.JenisUser,
 			"updated_at": time.Now(),
 		},
 	}

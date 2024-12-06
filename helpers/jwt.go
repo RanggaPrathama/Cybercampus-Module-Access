@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func GenerateToken(id string, username string, email string, jenisUser string) (string, error) {
+func GenerateToken(id string, username string, email string, jenisUser string, role string) (string, error) {
 
 	header := models.Header{
 		Alg: "HS256",
@@ -26,6 +26,7 @@ func GenerateToken(id string, username string, email string, jenisUser string) (
 		Username: username,
 		Email:    email,
 		JenisUser: jenisUser,
+		Role:     role,
 		Exp:      expirationTime,
 	}
 
