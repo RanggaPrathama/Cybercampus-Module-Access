@@ -2,6 +2,7 @@ package main
 
 import (
 	"cybercampus_module/configs"
+	"cybercampus_module/mock"
 	"cybercampus_module/routes"
 	"fmt"
 
@@ -18,6 +19,8 @@ func main() {
     
     configs.MongoConnect()
 
+	mock.InitMock()
+	
     routes.InitRoutes(app)
 
     printRoutes(app)
@@ -28,11 +31,11 @@ func main() {
 }
 
 func printRoutes(app *fiber.App) {
-	routes := app.Stack() // Mengambil semua rute
+	routes := app.Stack() 
 	fmt.Println("Registered Routes:")
 	for method, routeStack := range routes {
 		for _, route := range routeStack {
-			fmt.Printf("%s %s\n", method, route.Path)
+			fmt.Printf("%d %s\n", method, route.Path)
 		}
 	}
 }

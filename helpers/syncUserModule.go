@@ -9,6 +9,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var collectionUserModule = configs.GetCOllection(configs.Client, "user_module")
@@ -103,4 +104,40 @@ func SyncModuleTemplate(jenis_user primitive.ObjectID, idUser primitive.ObjectID
 	}
 
 	return true, nil
+}
+
+
+
+func SyncUpdateTemplate(jenis_user string, template []primitive.ObjectID) (bool, error){
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var checkJenisUserModule models.UserModule
+	err := collectionTemplate.FindOne(ctx, bson.M{"jenis_user": jenis_user}).Decode(&checkJenisUserModule)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return false, nil
+		}
+		return false, err
+	}
+
+	update := bson.M{
+		"$set" : bson.M{
+			"modules" : template,
+		},
+	}
+
+	filter := bson.M{
+		"jenis_user" : jenis_user,
+	}
+
+	_, err = collectionUserModule.UpdateMany(ctx, filter, update)
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+	
 }

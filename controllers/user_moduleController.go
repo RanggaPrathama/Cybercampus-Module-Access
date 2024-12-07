@@ -242,8 +242,8 @@ func UserModuleAddModule (c *fiber.Ctx) error {
 	}
 
 	updateuserModule := bson.M{
-		"$set" :bson.M{
-			"modules" : userModule.MODULES,
+		"$push" :bson.M{
+			"modules" : bson.M{"$each": userModule.MODULES},
 		},
 	}
 
@@ -299,13 +299,15 @@ func UserModuleDeleteModule (c *fiber.Ctx) error {
 
 	updateuserModule := bson.M{
 		"$pull" :bson.M{
-			"modules" : userModule.MODULES,
+			"modules": bson.M{"$in": userModule.MODULES},
 		},
 	}
+
 
 	filter := bson.M{"id_user" : userModule.IDUser}
 
 	result , err := collectionUserModule.UpdateOne(ctx, filter, updateuserModule)
+
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{

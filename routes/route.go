@@ -23,6 +23,7 @@ func InitRoutes(app *fiber.App) {
 	admin := api.Group("/admin", middleware.JwtMiddleware, middleware.CheckJenisRole([]string{"admin"}))
 
 	// Admin User Management
+	
 	adminUsers := admin.Group("/users")
 	adminUsers.Get("/", controllers.GetAllUsers)
 	adminUsers.Post("/add", controllers.CreateUser)

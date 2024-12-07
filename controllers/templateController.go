@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"cybercampus_module/configs"
+	"cybercampus_module/helpers"
 	"cybercampus_module/models"
 	"cybercampus_module/response"
 	"fmt"
@@ -227,6 +228,17 @@ func UpdateTemplate(c *fiber.Ctx) error {
 			Message: "No document was updated",
 			Data: nil,
 		})
+	}
+
+	var jenisRole models.TemplateRequest
+	_ = collectionTemplate.FindOne(ctx, bson.M{"_id": hexId}).Decode(&jenisRole)
+
+	// Sync update user module
+
+    cek , err := helpers.SyncUpdateTemplate(jenisRole.JenisUser, jenisRole.Template)
+
+	if err != nil && !cek {
+		fmt.Printf("CheckSync Update Template : %t, %s\n", cek, err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response.Response{
