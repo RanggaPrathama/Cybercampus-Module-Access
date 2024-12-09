@@ -25,6 +25,7 @@ func UserSeeder() {
 		Password: HashPasword,
 		Email:    "admin@gmail.com",
 		Role:    "admin",
+		IsActive: true,
 	}
 
 	_, err := collection.InsertOne(ctx, newUser)
