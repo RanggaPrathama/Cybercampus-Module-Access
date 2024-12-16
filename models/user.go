@@ -20,7 +20,7 @@ type UserResponse struct {
 	LastLogin           time.Time `bson:"last_login,omitempty" json:"LAST_LOGIN,omitempty"`
 	Photo               string    `bson:"photo,omitempty" json:"PHOTO,omitempty"`
 	Phone               string    `bson:"phone,omitempty" json:"PHONE,omitempty"`
-	JENIS_USER          primitive.ObjectID    `bson:"jenis_user,omitempty" json:"JENIS_USER,omitempty"`
+	JENIS_USER          string    `bson:"jenis_user,omitempty" json:"JENIS_USER,omitempty"`
 	Address             string    `bson:"address,omitempty" json:"ADDRESS,omitempty"`
 	Gender              string    `bson:"gender,omitempty" json:"GENDER,omitempty"` 
 	DateOfBirth         time.Time `bson:"tanggal_lahir,omitempty" json:"TANGGAL_LAHIR,omitempty"`

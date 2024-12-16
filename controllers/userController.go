@@ -7,7 +7,7 @@ import (
 	"cybercampus_module/models"
 	"cybercampus_module/response"
 	"fmt"
-	
+
 	"reflect"
 	"time"
 
@@ -16,12 +16,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-
 var collection = configs.GetCOllection(configs.Client, "users")
 
 func GetAllUsers(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	
+
 	defer cancel()
 
 	var users []models.UserResponse
@@ -30,27 +29,62 @@ func GetAllUsers(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
-			Status: fiber.StatusInternalServerError,
+			Status:  fiber.StatusInternalServerError,
 			Message: "Error when fetching users",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
-	if err = cursor.All(ctx, &users); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
-			Status: fiber.StatusInternalServerError,
-			Message: "Error when decoding users",
-			Data: err.Error(),
-		})
+	for cursor.Next(ctx) {
+		var value models.UserRequest
+		if err := cursor.Decode(&value); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
+				Status:  fiber.StatusInternalServerError,
+				Message: "Error when decoding user",
+				Data:    err.Error(),
+			})
+		}
+
+		var jenisUser models.JenisUserResponse
+
+		//check jenis user
+		err := collectionTemplate.FindOne(ctx, bson.M{"_id": value.JENIS_USER}).Decode(&jenisUser)
+		if err != nil && jenisUser.JenisUser != "" {
+			return c.Status(fiber.StatusNotFound).JSON(response.Response{
+				Status:  fiber.StatusNotFound,
+				Message: "JENIS USER NOT FOUND",
+				Data:    err.Error(),
+			})
+		}
+
+		user := models.UserResponse{
+			ID:       value.ID,
+			Username: value.Username,
+			NM_USER:  value.NM_USER,
+			Email:    value.Email,
+			Password: value.Password,
+			Role:     value.Role,
+			JENIS_USER: func() string {
+				if jenisUser.JenisUser == "" {
+					return "admin"
+				}
+				return jenisUser.JenisUser
+			}(),
+			LastLogin: value.LastLogin,
+			CreatedAt: value.CreatedAt,
+			UpdatedAt: value.UpdatedAt,
+			Phone:     value.Phone,
+		}
+		users = append(users, user)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response.Response{
-		Status: fiber.StatusOK,
+		Status:  fiber.StatusOK,
 		Message: "Success",
-		Data: users,
+		Data:    users,
 	})
 
-} 
+}
 
 func CreateUser(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -60,60 +94,59 @@ func CreateUser(c *fiber.Ctx) error {
 
 	if err := c.BodyParser(&user); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(response.Response{
-			Status: fiber.StatusBadRequest,
+			Status:  fiber.StatusBadRequest,
 			Message: "Error when parsing body",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
 	hashedPassword := helpers.HashPasword(user.Password)
 
 	userNew := models.UserRequest{
-		Username: user.Username,
-		NM_USER: user.NM_USER,
-		Password: hashedPassword,
-		Email: user.Email,
-		Role: user.Role,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		IsActive: true,
-		Photo: user.Photo,
-		Phone: user.Phone,
-		JENIS_USER: user.JENIS_USER,
-		Address: user.Address,
-		Gender: user.Gender,
+		Username:    user.Username,
+		NM_USER:     user.NM_USER,
+		Password:    hashedPassword,
+		Email:       user.Email,
+		Role:        user.Role,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+		IsActive:    true,
+		Photo:       user.Photo,
+		Phone:       user.Phone,
+		JENIS_USER:  user.JENIS_USER,
+		Address:     user.Address,
+		Gender:      user.Gender,
 		DateOfBirth: user.DateOfBirth,
 	}
 
-	data , err := collection.InsertOne(ctx, userNew)
+	data, err := collection.InsertOne(ctx, userNew)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
-			Status: fiber.StatusInternalServerError,
+			Status:  fiber.StatusInternalServerError,
 			Message: "Error when inserting user",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
 	usernewId := data.InsertedID.(primitive.ObjectID)
-	
-	//Sync UserModule
-	if user.Role != "admin"{
-		responses , err := helpers.SyncModuleTemplate(user.JENIS_USER, usernewId)
 
-	if err != nil || !responses {
-		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
-			Status: fiber.StatusInternalServerError,
-			Message: "Error when syncing user module",
-			Data: err.Error(),
-		})
+	//Sync UserModule
+	if user.Role != "admin" {
+		responses, err := helpers.SyncModuleTemplate(user.JENIS_USER, usernewId)
+
+		if err != nil || !responses {
+			return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
+				Status:  fiber.StatusInternalServerError,
+				Message: "Error when syncing user module",
+				Data:    err.Error(),
+			})
+		}
 	}
-	}
-	
-	
-	return c.Status(fiber.StatusCreated).JSON( response.Response{
-		Status: fiber.StatusCreated,
+
+	return c.Status(fiber.StatusCreated).JSON(response.Response{
+		Status:  fiber.StatusCreated,
 		Message: "Success",
-		Data: data,
+		Data:    data,
 	})
 }
 
@@ -122,35 +155,66 @@ func GetUserById(c *fiber.Ctx) error {
 	defer cancel()
 
 	id := c.Locals("id_user").(string)
-	hexId, err  := primitive.ObjectIDFromHex(id)
+	jenis_user := c.Locals("jenis_user").(string)
+
+	hexId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
-			Status: fiber.StatusInternalServerError,
+			Status:  fiber.StatusInternalServerError,
 			Message: "Error when parsing id",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
 	var user models.UserResponse
+	var jenisUser models.JenisUserResponse
+
+	//checkJenisUser
+	err = collectionTemplate.FindOne(ctx, bson.M{"jenis_user": jenis_user}).Decode(&jenisUser)
+
+	if err != nil && jenisUser.JenisUser != "" {
+		return c.Status(fiber.StatusNotFound).JSON(response.Response{
+			Status:  fiber.StatusNotFound,
+			Message: "Not Found Jenis User",
+			Data:    err.Error(),
+		})
+	}
 
 	err = collection.FindOne(ctx, bson.M{"_id": hexId}).Decode(&user)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
-			Status: fiber.StatusInternalServerError,
+			Status:  fiber.StatusInternalServerError,
 			Message: "Error when fetching user",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
+	profileUser := models.UserResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		NM_USER:  user.NM_USER,
+		Email:    user.Email,
+		Password: user.Password,
+		Role:     user.Role,
+		JENIS_USER: func() string {
+			if jenisUser.JenisUser == "" {
+				return "admin"
+			}
+			return jenisUser.JenisUser
+		}(),
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	}
+
 	return c.Status(fiber.StatusOK).JSON(response.Response{
-		Status: fiber.StatusOK,
+		Status:  fiber.StatusOK,
 		Message: "Success",
-		Data: user,
+		Data:    profileUser,
 	})
 }
 
 func UpdateUser(c *fiber.Ctx) error {
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -158,9 +222,9 @@ func UpdateUser(c *fiber.Ctx) error {
 	hexId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
-			Status: fiber.StatusInternalServerError,
+			Status:  fiber.StatusInternalServerError,
 			Message: "Error when parsing id",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
@@ -168,9 +232,9 @@ func UpdateUser(c *fiber.Ctx) error {
 
 	if err := c.BodyParser(&user); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(response.Response{
-			Status: fiber.StatusBadRequest,
+			Status:  fiber.StatusBadRequest,
 			Message: "Error when parsing body",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
@@ -181,18 +245,18 @@ func UpdateUser(c *fiber.Ctx) error {
 	value := reflect.ValueOf(user)
 	tipe := reflect.TypeOf(user)
 
-	for i := 0; i< value.NumField(); i++ {
+	for i := 0; i < value.NumField(); i++ {
 		fieldName := tipe.Field(i).Tag.Get("bson")
 		//fmt.Print("Tes : ", fieldName)
-		if fieldName == "" || fieldName == "-"  {
+		if fieldName == "" || fieldName == "-" {
 			continue
-		} 
+		}
 		fieldValue := value.Field(i).Interface()
 		switch val := fieldValue.(type) {
 		case string:
 			if val != "" {
 				updateUser[fieldName] = val
-			
+
 			}
 		case time.Time:
 			if !val.IsZero() {
@@ -210,47 +274,45 @@ func UpdateUser(c *fiber.Ctx) error {
 
 	}
 
-	//fmt.Printf("Update User Fields: %+v\n", updateUser) 
+	//fmt.Printf("Update User Fields: %+v\n", updateUser)
 	//fmt.Println("Len User", len(updateUser))
 
 	if len(updateUser) > 0 {
 		updateUser["updated_at"] = time.Now()
 		//fmt.Printf("Update User Fields: %+v\n", updateUser)
-		result , err := collection.UpdateOne(ctx, bson.M{"_id": hexId}, bson.M{"$set": updateUser})
+		result, err := collection.UpdateOne(ctx, bson.M{"_id": hexId}, bson.M{"$set": updateUser})
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
-				Status: fiber.StatusInternalServerError,
+				Status:  fiber.StatusInternalServerError,
 				Message: "Error when updating user",
-				Data: err.Error(),
+				Data:    err.Error(),
 			})
 		}
 
 		if result.ModifiedCount == 0 {
 			return c.Status(fiber.StatusBadRequest).JSON(response.Response{
-				Status: fiber.StatusBadRequest,
+				Status:  fiber.StatusBadRequest,
 				Message: "No document was updated",
-				Data: nil,
+				Data:    nil,
 			})
 		}
-	} else{
+	} else {
 		return c.Status(fiber.StatusBadRequest).JSON(response.Response{
-			Status: fiber.StatusBadRequest,
+			Status:  fiber.StatusBadRequest,
 			Message: "No field to update",
-			Data: nil,
+			Data:    nil,
 		})
 	}
 
-		return c.Status(fiber.StatusOK).JSON(response.Response{
-			Status: fiber.StatusOK,
-			Message: "Success",
-			Data: nil,
-		})
-	
-	
+	return c.Status(fiber.StatusOK).JSON(response.Response{
+		Status:  fiber.StatusOK,
+		Message: "Success",
+		Data:    nil,
+	})
+
 }
 
-
-func DeleteUser (c *fiber.Ctx) error {
+func DeleteUser(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -259,31 +321,30 @@ func DeleteUser (c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
-			Status: fiber.StatusInternalServerError,
+			Status:  fiber.StatusInternalServerError,
 			Message: "Error when parsing id",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
-	respon , err := collection.DeleteOne(ctx, bson.M{"_id": hexId})
+	respon, err := collection.DeleteOne(ctx, bson.M{"_id": hexId})
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
-			Status: fiber.StatusInternalServerError,
+			Status:  fiber.StatusInternalServerError,
 			Message: "Error when deleting user",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response.Response{
-		Status: fiber.StatusOK,
+		Status:  fiber.StatusOK,
 		Message: "Success",
-		Data: respon,
+		Data:    respon,
 	})
 }
 
-
-func UpdateJenisUser( c *fiber.Ctx) error {
+func UpdateJenisUser(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -291,45 +352,44 @@ func UpdateJenisUser( c *fiber.Ctx) error {
 
 	if err := c.BodyParser(&user); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(response.Response{
-			Status: fiber.StatusBadRequest,
+			Status:  fiber.StatusBadRequest,
 			Message: "Error when parsing body",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
 	updateUser := bson.M{
-		"$set" : bson.M{
-			"jenis_user" : user.JENIS_USER,
+		"$set": bson.M{
+			"jenis_user": user.JENIS_USER,
 		},
 	}
 
-	filter := bson.M{"_id" : user.ID}
+	filter := bson.M{"_id": user.ID}
 
-	result , err := collection.UpdateOne(ctx, filter, updateUser)
+	result, err := collection.UpdateOne(ctx, filter, updateUser)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
-			Status: fiber.StatusInternalServerError,
+			Status:  fiber.StatusInternalServerError,
 			Message: "Error when updating user",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
-	responses , err := helpers.SyncModuleTemplate(user.JENIS_USER, user.ID)
+	responses, err := helpers.SyncModuleTemplate(user.JENIS_USER, user.ID)
 
 	if err != nil || !responses {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
-			Status: fiber.StatusInternalServerError,
+			Status:  fiber.StatusInternalServerError,
 			Message: "Error when syncing user module",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response.Response{
-		Status: fiber.StatusOK,
+		Status:  fiber.StatusOK,
 		Message: "Success",
-		Data: result,
+		Data:    result,
 	})
-
 
 }
