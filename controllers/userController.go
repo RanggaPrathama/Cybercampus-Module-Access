@@ -102,6 +102,22 @@ func CreateUser(c *fiber.Ctx) error {
 
 	hashedPassword := helpers.HashPasword(user.Password)
 
+	//cekJenisUser 
+	var jenisUser models.TemplateRequest
+	
+	err := collectionTemplate.FindOne(ctx, bson.M{"_id": user.JENIS_USER}).Decode(&jenisUser)
+
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(response.Response{
+			Status:  fiber.StatusNotFound,
+			Message: "Not Found Jenis User With Templates",
+			Data:    err.Error(),
+		})
+	}
+
+	module := []primitive.ObjectID{}
+	module = append(module, jenisUser.Template...)
+	
 	userNew := models.UserRequest{
 		Username:    user.Username,
 		NM_USER:     user.NM_USER,
@@ -117,6 +133,7 @@ func CreateUser(c *fiber.Ctx) error {
 		Address:     user.Address,
 		Gender:      user.Gender,
 		DateOfBirth: user.DateOfBirth,
+		Modules:   module,
 	}
 
 	data, err := collection.InsertOne(ctx, userNew)
@@ -128,20 +145,6 @@ func CreateUser(c *fiber.Ctx) error {
 		})
 	}
 
-	usernewId := data.InsertedID.(primitive.ObjectID)
-
-	//Sync UserModule
-	if user.Role != "admin" {
-		responses, err := helpers.SyncModuleTemplate(user.JENIS_USER, usernewId)
-
-		if err != nil || !responses {
-			return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
-				Status:  fiber.StatusInternalServerError,
-				Message: "Error when syncing user module",
-				Data:    err.Error(),
-			})
-		}
-	}
 
 	return c.Status(fiber.StatusCreated).JSON(response.Response{
 		Status:  fiber.StatusCreated,
@@ -166,7 +169,7 @@ func GetUserById(c *fiber.Ctx) error {
 		})
 	}
 
-	var user models.UserResponse
+	var user models.ProfileResponse
 	var jenisUser models.JenisUserResponse
 
 	//checkJenisUser
@@ -189,7 +192,7 @@ func GetUserById(c *fiber.Ctx) error {
 		})
 	}
 
-	profileUser := models.UserResponse{
+	profileUser := models.ProfileResponse{
 		ID:       user.ID,
 		Username: user.Username,
 		NM_USER:  user.NM_USER,

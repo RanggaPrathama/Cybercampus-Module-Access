@@ -26,37 +26,35 @@ func UserModuleFindAll(c *fiber.Ctx) error {
 	defer cancel()
 
 	pipeline := mongo.Pipeline{
-		{ {
-			Key : "$lookup", Value : bson.D{
-				{Key : "from", Value : "users"},
-				{Key : "localField", Value : "id_user"},
-				{Key : "foreignField", Value : "_id"},
-				{Key : "as", Value : "user_data"},
-			},
-		},},
-		{{ 
-			Key : "$unwind", Value : "$user_data",
-		 }},
-		 {{ 
+		{{
 			Key: "$lookup", Value: bson.D{
 				{Key: "from", Value: "module"},
 				{Key: "localField", Value: "modules"},
 				{Key: "foreignField", Value: "_id"},
 				{Key: "as", Value: "module_data"},
 			},
-		  }},
+		}},
+		{{
+			Key: "$lookup", Value: bson.D{
+				{Key: "from", Value: "templates"},
+				{Key: "localField", Value: "jenis_user"},
+				{Key: "foreignField", Value: "_id"},
+				{Key: "as", Value: "template_data"},
+			},
+		}},
+		{{Key: "$unwind", Value: "$template_data"}},
 		  {{ 
 			Key: "$project", Value: bson.D{
 				{Key: "_id", Value: 1},
-				{Key: "id_user", Value: 1},
-				{Key: "jenis_user", Value: 1},
-				{Key: "created_at", Value: 1},
-				{Key: "updated_at", Value: 1},
-				{Key: "username", Value: "$user_data.username"},
-				{Key: "nm_user", Value: "$user_data.nm_user"},
-				{Key: "email", Value: "$user_data.email"},
-				{Key: "password", Value: "$user_data.password"},
-				{Key: "role", Value: "$user_data.role"},
+				{Key: "username", Value: 1},
+				{Key: "nm_user", Value: 1},
+				{Key: "email", Value: 1},
+				{Key: "password", Value: 1},
+				{Key: "jenis_user", Value: "$template_data.jenis_user"},
+				{Key: "role", Value: 1},
+				{Key: "phone", Value: 1},
+				{Key: "address", Value: 1},
+				{Key: "date_of_birth", Value: 1},
 				{Key: "modules", Value: "$module_data"},
 			},
 		   }},
@@ -74,7 +72,7 @@ func UserModuleFindAll(c *fiber.Ctx) error {
 
 	
 
-	var userModuleResult []models.UserModuleResponse
+	var userModuleResult []models.UserResponse
 
 	if err = cursor.All(ctx, &userModuleResult); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -83,8 +81,6 @@ func UserModuleFindAll(c *fiber.Ctx) error {
 			"data":    err.Error(),
 		})
 	}
-
-	
 
 	return c.Status(fiber.StatusOK).JSON(response.Response{
 		Status:  fiber.StatusOK,
@@ -142,20 +138,10 @@ func UserModuleFindByUser(c *fiber.Ctx) error {
 	pipeline := mongo.Pipeline{
 		{
 			{Key: "$match", Value: bson.D{
-				{Key: "id_user", Value: hexID},
+				{Key: "_id", Value: hexID},
 			}},
 		},
-		{
-			{Key: "$lookup", Value: bson.D{
-				{Key: "from", Value: "users"},
-				{Key: "localField", Value: "id_user"},
-				{Key: "foreignField", Value: "_id"},
-				{Key: "as", Value: "user_data"},
-			}},
-		},
-		{
-			{Key: "$unwind", Value: "$user_data"},
-		},
+
 		{
 			{Key: "$lookup", Value: bson.D{
 				{Key: "from", Value: "module"},
@@ -164,25 +150,34 @@ func UserModuleFindByUser(c *fiber.Ctx) error {
 				{Key: "as", Value: "module_data"},
 			}},
 		},
+		{{
+			Key: "$lookup", Value: bson.D{
+				{Key: "from", Value: "templates"},
+				{Key: "localField", Value: "jenis_user"},
+				{Key: "foreignField", Value: "_id"},
+				{Key: "as", Value: "template_data"},
+			},
+		}},
+		{{Key: "$unwind", Value: "$template_data"}},
 		{
 			{Key: "$project", Value: bson.D{
 				{Key: "_id", Value: 1},
-				{Key: "id_user", Value: 1},
-				{Key: "jenis_user", Value: 1},
-				{Key: "created_at", Value: 1},
-				{Key: "updated_at", Value: 1},
-				{Key: "username", Value: "$user_data.username"},
-				{Key: "nm_user", Value: "$user_data.nm_user"},
-				{Key: "email", Value: "$user_data.email"},
-				{Key: "password", Value: "$user_data.password"},
-				{Key: "role", Value: "$user_data.role"},
+				{Key: "username", Value: 1},
+				{Key: "nm_user", Value: 1},
+				{Key: "email", Value: 1},
+				{Key: "password", Value: 1},
+				{Key: "jenis_user", Value: "$template_data.jenis_user"},
+				{Key: "role", Value: 1},
+				{Key: "phone", Value: 1},
+				{Key: "address", Value: 1},
+				{Key: "date_of_birth", Value: 1},
 				{Key: "modules", Value: "$module_data"},
 			}},
 		},
 	}
 
 	
-	cursor, err := collectionUserModule.Aggregate(ctx, pipeline)
+	cursor, err := collection.Aggregate(ctx, pipeline)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  fiber.StatusInternalServerError,
@@ -192,7 +187,7 @@ func UserModuleFindByUser(c *fiber.Ctx) error {
 	}
 
 
-	var userModuleResult []models.UserModuleResponse
+	var userModuleResult []models.UserResponse
 	if err = cursor.All(ctx, &userModuleResult); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  fiber.StatusInternalServerError,
@@ -213,7 +208,7 @@ func UserModuleFindByUser(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response.Response{
 		Status:  fiber.StatusOK,
 		Message: "Success",
-		Data:    userModuleResult,
+		Data:    userModuleResult[0],
 	})
 }
 
@@ -247,9 +242,9 @@ func UserModuleAddModule (c *fiber.Ctx) error {
 		},
 	}
 
-	filter := bson.M{"id_user" : userModule.IDUser}
+	filter := bson.M{"_id" : userModule.IDUser}
 
-	result , err := collectionUserModule.UpdateOne(ctx, filter, updateuserModule)
+	result , err := collection.UpdateOne(ctx, filter, updateuserModule)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(response.Response{
@@ -304,9 +299,9 @@ func UserModuleDeleteModule (c *fiber.Ctx) error {
 	}
 
 
-	filter := bson.M{"id_user" : userModule.IDUser}
+	filter := bson.M{"_id" : userModule.IDUser}
 
-	result , err := collectionUserModule.UpdateOne(ctx, filter, updateuserModule)
+	result , err := collection.UpdateOne(ctx, filter, updateuserModule)
 
 
 	if err != nil {

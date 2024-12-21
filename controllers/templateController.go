@@ -230,12 +230,10 @@ func UpdateTemplate(c *fiber.Ctx) error {
 		})
 	}
 
-	var jenisRole models.TemplateRequest
-	_ = collectionTemplate.FindOne(ctx, bson.M{"_id": hexId}).Decode(&jenisRole)
 
 	// Sync update user module
 
-    cek , err := helpers.SyncUpdateTemplate(jenisRole.JenisUser, jenisRole.Template)
+    cek , err := helpers.SyncUpdateTemplate(hexId, template.Template)
 
 	if err != nil && !cek {
 		fmt.Printf("CheckSync Update Template : %t, %s\n", cek, err)

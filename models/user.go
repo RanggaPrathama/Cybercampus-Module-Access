@@ -24,7 +24,26 @@ type UserResponse struct {
 	Address             string    `bson:"address,omitempty" json:"ADDRESS,omitempty"`
 	Gender              string    `bson:"gender,omitempty" json:"GENDER,omitempty"` 
 	DateOfBirth         time.Time `bson:"tanggal_lahir,omitempty" json:"TANGGAL_LAHIR,omitempty"`
+	Modules             []ModuleResponse `bson:"modules,omitempty" json:"MODULES"`
+}
 
+type ProfileResponse struct {
+	ID                  primitive.ObjectID    `bson:"_id,omitempty" json:"ID"`
+	Username            string    `bson:"username" json:"USERNAME"`
+	NM_USER            	string    `bson:"nm_user" json:"NM_USER"`
+	Password            string    `bson:"password" json:"PASSWORD"`
+	Email               string    `bson:"email" json:"EMAIL"`
+	Role            	string    `bson:"role" json:"ROLE"`
+	CreatedAt           time.Time `bson:"created_at" json:"CREATED_AT"`
+	UpdatedAt           time.Time `bson:"updated_at" json:"UPDATED_AT"`
+	IsActive            bool      `bson:"is_active" json:"IS_ACTIVE"`
+	LastLogin           time.Time `bson:"last_login,omitempty" json:"LAST_LOGIN,omitempty"`
+	Photo               string    `bson:"photo,omitempty" json:"PHOTO,omitempty"`
+	Phone               string    `bson:"phone,omitempty" json:"PHONE,omitempty"`
+	JENIS_USER          string    `bson:"jenis_user,omitempty" json:"JENIS_USER,omitempty"`
+	Address             string    `bson:"address,omitempty" json:"ADDRESS,omitempty"`
+	Gender              string    `bson:"gender,omitempty" json:"GENDER,omitempty"` 
+	DateOfBirth         time.Time `bson:"tanggal_lahir,omitempty" json:"TANGGAL_LAHIR,omitempty"`
 }
 
 type UserRequest struct {
@@ -44,6 +63,7 @@ type UserRequest struct {
 	Address             string    `bson:"address" json:"ADDRESS"`
 	Gender              string    `bson:"gender" json:"GENDER"`
 	DateOfBirth         time.Time `bson:"tanggal_lahir" json:"TANGGAL_LAHIR"`
+	Modules              []primitive.ObjectID `bson:"modules" json:"MODULES"`
 
 }
 
@@ -65,5 +85,6 @@ type UserLogin struct {
 	Address             string    `bson:"address,omitempty" json:"ADDRESS,omitempty"`
 	Gender              string    `bson:"gender,omitempty" json:"GENDER,omitempty"` 
 	DateOfBirth         time.Time `bson:"tanggal_lahir,omitempty" json:"TANGGAL_LAHIR,omitempty"`
+	Modules             []ModuleResponse `bson:"modules" json:"MODULES"`
 	TOKEN 			    string    `bson:"token,omitempty" json:"TOKEN,omitempty"` 
 }
